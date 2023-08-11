@@ -13,8 +13,8 @@ import sys, os, time
 from ctypes import *
 from functools import reduce
 
-#datafn = 'data/sampleimages.npz'
-datafn = 'data/crop_data1.npz'
+datafn = 'data/sampleimages.npz'
+#datafn = 'data/crop_data1.npz'
 
 firstframe=1
 lastframe=10
