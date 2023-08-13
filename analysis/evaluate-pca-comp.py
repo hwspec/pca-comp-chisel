@@ -72,29 +72,23 @@ def getscalingfactorfp16(inv):
     return f
 
 
-def getquantized(inv):
-    naccums = 128*128
-    pixmaxv = (1 << 8) - 1
-
+def getquantizationfactor(inv, nbits=12):
     invminv = np.min(inv)
     invmaxv = np.max(inv)
 
     f16max=65504.0
     f16min=6.1035e-5
 
-    #imax=65535.0
-    imax=(1<<12) - 1
+    imax=(1<<nbits) - 1
 
     d = (invmaxv-invminv)/imax
-    o = invminv
 
-    q_inv = (inv-o) / d
+    q_inv = inv / d
     q_invminv = int(np.min(q_inv))
     q_invmaxv = int(np.max(q_inv))
 
-    print(f"d,o=({d},{o})")
-    print(f"inv quantized: ({invminv},{invmaxv}) => ({q_invminv}, {q_invmaxv})")
-    return (d,o)
+    print(f"inv quantization ({invminv},{invmaxv}) => ({q_invminv}, {q_invmaxv}) d={d} nbits={nbits}")
+    return d
 
 
 def loadfiles(sprime, datafn, encfn, verbose):
@@ -152,7 +146,7 @@ g_h = g_data_shape_orig[2]
 
 g_scalingfactor = getscalingfactorfp16(g_invenc)
 
-(g_quantized_d, g_quantized_o) = getquantized(g_invenc)
+g_quantized_d = getquantizationfactor(g_invenc)
 
 
 def evaluatePCA(d, rem, iem, sprime, dataprec, invprec):
@@ -184,9 +178,8 @@ def evaluatePCA_scaling(d, rem, iem, sprime, dataprec, invprec, scaling=1.0):
     return (mse, data - data_approx)
 
 
-def evaluatePCA_mixed(d, rem, iem, sprime, dataprec, invprec, redprec, qd, qo):
+def evaluatePCA_mixed(d, rem, iem, sprime, dataprec, invprec, redprec, qd):
     data = np.array([d]).astype(dataprec)
-    # iem = (iem - qo)/qd
     iem = iem/qd
     invsprime = iem.astype(invprec)
 
@@ -196,11 +189,6 @@ def evaluatePCA_mixed(d, rem, iem, sprime, dataprec, invprec, redprec, qd, qo):
     weighting_matrix = weighting_matrix.astype(redprec)
     weighting_matrix = np.sum(weighting_matrix, axis=0)
     weighting_matrix *= qd
-
-    #data = data.astype('float32')
-    #adj = np.sum(data)*qo/qd
-    #print(f'adj = {adj}')
-    #weighting_matrix +=  adj
 
     # recovery always back to float64
     data_approx = np.matmul(weighting_matrix, rem, dtype=np.float64)
@@ -219,7 +207,7 @@ def evaluate_pca(data, fstart, fend, sprime, rem, iem, cr, w, h):
         (msef64, recf64) = evaluatePCA(data[fno], rem, iem, sprime, 'float64', 'float64')
         (msef32, recf32) = evaluatePCA(data[fno], rem, iem, sprime, 'float32', 'float32')
         (msef16, recf16) = evaluatePCA(data[fno], rem, iem, sprime, 'float16', 'float16')
-        (msef16m, recf16m) = evaluatePCA_mixed(data[fno], rem, iem, sprime, 'int16', 'int32', 'float32', g_quantized_d,  g_quantized_o)
+        (msef16m, recf16m) = evaluatePCA_mixed(data[fno], rem, iem, sprime, 'int16', 'int32', 'float32', g_quantized_d)
         #  print(f'{fno}: {msef64:.3f} {msef32:.3f} {msef16:.3f} {msef16s:.3}')
         msef64array.append(msef64)
         msef32array.append(msef32)
