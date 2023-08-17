@@ -8,7 +8,7 @@ import org.scalatest.tools.Runner
 class VMulRedSpec extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "VMulRed"
 
-  val npx = 32
+  val npx = 128*8
   val nbits_px = 8  // unsigned
   val nbits_iem = 8 // signed
 
@@ -32,7 +32,9 @@ class VMulRedSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   def testLoop(inpx: List[BigInt], iniem: List[BigInt]) : Unit = {
     val ref = calmulredref(inpx, iniem)
-    test(new VMulRed(n=npx, nbits_px=nbits_px, nbits_iem=nbits_iem)) { c =>
+    test(new VMulRed(n=npx, nbits_px=nbits_px, nbits_iem=nbits_iem))
+    .withAnnotations(Seq(VerilatorBackendAnnotation))
+    { c =>
       inpx.zip(iniem).zipWithIndex.foreach { case ((px, iem), idx) =>
         c.io.in_px(idx).poke(px)
         c.io.in_iem(idx).poke(iem)
