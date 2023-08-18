@@ -2,7 +2,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import Timer, RisingEdge, FallingEdge
 
-from evaluate_pca_comp import basic_stats
+from pcacomp import *
 
 @cocotb.test()
 async def testVMulRed(dut):
