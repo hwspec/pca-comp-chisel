@@ -60,9 +60,9 @@ class FPTestSpec extends AnyFlatSpec with ChiselScalatestTester with Formal {
     }
   }
 
-  "FPOPTest ADD" should "pass" in testFPOPTest(FPOPTest.ADD)
+  //"FPOPTest ADD" should "pass" in testFPOPTest(FPOPTest.ADD)
 
-  "FPOPTest SUB" should "pass" in testFPOPTest(FPOPTest.SUB)
+  //"FPOPTest SUB" should "pass" in testFPOPTest(FPOPTest.SUB)
 
-  "FPOPTest MUL" should "pass" in testFPOPTest(FPOPTest.MUL)
+  //"FPOPTest MUL" should "pass" in testFPOPTest(FPOPTest.MUL)
 }

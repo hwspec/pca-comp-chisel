@@ -23,6 +23,8 @@ import sys, os, time
 from ctypes import *
 from functools import reduce
 
+import struct
+
 g_basename='data1small'
 
 g_firstframe=0
@@ -230,6 +232,13 @@ def evaluatePCA_qvec(d, rem, iem, sprime, dataprec, invprec, redprec, qv):
     return (mse, data - data_approx)
 
 
+def save_sintdata(fn, data):
+    with open(fn, "wb") as f:
+        for d in data:
+            p = struct.pack("<q", d)  # q for 64-bit, i for 32-bit. < for little endian
+            f.write(p)
+
+
 def evaluate_pca(data, fstart, fend, sprime, rem, iem, cr, w, h, nbits):
     msef64array = []
     msef32array = []
@@ -254,12 +263,12 @@ def evaluate_pca(data, fstart, fend, sprime, rem, iem, cr, w, h, nbits):
                 plt.colorbar()
                 plt.savefig(fn)
                 plt.clf()
-            genpng(f's{sprime}-fno{fno}-orig.png', data[fno].reshape(w,h))
-            genpng(f's{sprime}-fno{fno}-recf64.png', recf64.reshape(w,h))
-            genpng(f's{sprime}-fno{fno}-recf32.png', recf32.reshape(w,h))
-            genpng(f's{sprime}-fno{fno}-recf16.png', recf16.reshape(w,h))
-            genpng(f's{sprime}-fno{fno}-recf16m.png', recf16m.reshape(w,h))
-            genpng(f's{sprime}-fno{fno}-recqvec.png', recqv.reshape(w,h))
+            genpng(f'png/s{sprime}-fno{fno}-orig.png', data[fno].reshape(w,h))
+            genpng(f'png/s{sprime}-fno{fno}-recf64.png', recf64.reshape(w,h))
+            genpng(f'png/s{sprime}-fno{fno}-recf32.png', recf32.reshape(w,h))
+            genpng(f'png/s{sprime}-fno{fno}-recf16.png', recf16.reshape(w,h))
+            genpng(f'png/s{sprime}-fno{fno}-recf16m.png', recf16m.reshape(w,h))
+            genpng(f'pngs{sprime}-fno{fno}-recqvec.png', recqv.reshape(w,h))
 
     print('')
     print(f'[stats] nbits={nbits} mem={nbits*sprime*w*h/8/1024}KB')
@@ -270,7 +279,7 @@ def evaluate_pca(data, fstart, fend, sprime, rem, iem, cr, w, h, nbits):
 
     print(f"dtype sprime cratio    mean    stddiv    min    max")
     print_prec_stats(msef64array, 'f64')
-    print_prec_stats(msef32array, 'f32')
+#    print_prec_stats(msef32array, 'f32')
     print_prec_stats(msef16array, 'f16')
     print_prec_stats(msef16marray, 'f16m')
     print_prec_stats(mseqvarray, 'qvec')
