@@ -32,7 +32,7 @@ g_basename='data1small'
 g_firstframe=0
 g_lastframe=1
 g_sprime = 25 # 3000
-g_verbose = True # False
+g_verbose = False #
 g_nbits = 8  # nbits for quantized inv. enc. mat.
 
 if len(sys.argv) > 1:
