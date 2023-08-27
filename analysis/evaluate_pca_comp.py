@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import math as m
 import numpy as np
 import sys, os, time
-import copy
+
 
 from ctypes import *
 from functools import reduce
@@ -72,9 +72,7 @@ def evaluate_pca(data, fstart, fend, sprime, rem, iem, cr, w, h, nbits):
     msef16array = []
     msef16marray = []
     mseqvarray = []
-    iemcopy = copy.deepcopy(iem)
     for fno in range(fstart, fend):
-        iem = copy.deepcopy(iemcopy) # hate. lack of const...
         (msef64, recf64) = evaluatePCA(data[fno], rem, iem, sprime, 'float64', 'float64')
         (msef32, recf32) = evaluatePCA(data[fno], rem, iem, sprime, 'float32', 'float32')
         (msef16, recf16) = evaluatePCA(data[fno], rem, iem, sprime, 'float16', 'float16')

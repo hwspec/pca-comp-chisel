@@ -11,6 +11,7 @@ from ctypes import *
 from functools import reduce
 
 import struct
+import copy
 
 def basic_stats(d):
     dmean = np.mean(d)
@@ -158,10 +159,12 @@ def evaluatePCA_mixed(d, rem, iem, sprime, dataprec, invprec, redprec, qd):
 def evaluatePCA_qvec(d, rem, iem, sprime, dataprec, invprec, redprec, qv):
     data = np.array([d]).astype(dataprec)
 
-    for s in range(0, sprime):
-        iem[:,s] /= qv[s]
+    iemcopy = copy.deepcopy(iem)
 
-    invsprime = iem.astype(invprec)
+    for s in range(0, sprime):
+        iemcopy[:,s] /= qv[s]
+
+    invsprime = iemcopy.astype(invprec)
 
     #print(f"quantized inv: {np.min(invsprime)}  {np.max(invsprime)}")
 
@@ -188,4 +191,3 @@ def save_sintdata(fn, data):
         for d in data:
             p = struct.pack("<q", d)  # q for 64-bit, i for 32-bit. < for little endian
             f.write(p)
-
