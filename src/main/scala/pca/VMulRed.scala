@@ -2,6 +2,7 @@ package pca
 
 import chisel3._
 import chisel3.util._
+import common.GenVerilog
 
 
 class VMulRed(n: Int = 4, nbits_px: Int = 8, nbits_iem: Int = 8) extends Module {
@@ -21,4 +22,14 @@ class VMulRed(n: Int = 4, nbits_px: Int = 8, nbits_iem: Int = 8) extends Module 
   val mulres = Wire(Vec(n, SInt(nbits_out.W)))
   for (i <- 0 until n) mulres(i) := io.in_iem(i) * io.in_px(i)
   io.out := mulres.reduce(_ + _)
+}
+
+
+
+object VMulRed extends App {
+  val n=256
+  val nbits_px=8
+  val nbits_iem=8
+
+  GenVerilog.generate(new VMulRed(n,nbits_px,nbits_iem))
 }

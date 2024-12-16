@@ -1,7 +1,7 @@
 package pca
 
 //import chisel3.stage.ChiselStage
-import _root_.circt.stage.ChiselStage // for 5.0.0
+import _root_.circt.stage.ChiselStage
 
 object GenPCA {
   def main(args: Array[String]): Unit = {
