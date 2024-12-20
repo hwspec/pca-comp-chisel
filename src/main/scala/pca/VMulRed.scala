@@ -19,6 +19,10 @@ class VMulRed(n: Int = 4, nbits_px: Int = 8, nbits_iem: Int = 8) extends Module 
     val out = Output(SInt(nbits_out.W))
   })
 
+  // This implementation simply creates wires with nbits_out.
+  // There is room for optimizing the reduction stage by creating wires
+  // with the bit width needed for each stage. The first stage only needs
+  // nbits_mul + 1, for example.
   val mulres = Wire(Vec(n, SInt(nbits_out.W)))
   for (i <- 0 until n) mulres(i) := io.in_iem(i) * io.in_px(i)
   io.out := mulres.reduce(_ + _)
