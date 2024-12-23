@@ -4,6 +4,29 @@ import chiseltest._
 import scala.util.Random
 import common.CommonSpecConfig
 
+class CompareRedSpec extends CommonSpecConfig {
+  behavior of "CompareRed"
+
+  val n = 4
+  val inbw = 8
+
+  "basic test" should "pass" in {
+    test(new CompareRed(n, inbw)) { dut =>
+      val testdata = List.tabulate(n) { i =>
+        Random.nextInt((1<<(inbw-1)))
+      }
+      val ref = testdata.reduce(_ + _)
+      testdata.zipWithIndex.foreach{ case(v,idx) =>
+        dut.io.in(idx).poke(v)
+      }
+      val o1 = dut.io.out1.peekInt()
+      val o2 = dut.io.out2.peekInt()
+      println(s"$o1 $o2 $ref")
+    }
+  }
+}
+
+
 class VMulRedSpec extends CommonSpecConfig {
   behavior of "VMulRed"
 
