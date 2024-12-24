@@ -1,0 +1,10 @@
+read -sv ConcatZeroStrip.v
+hierarchy -check -top ConcatZeroStrip
+
+proc; opt; techmap; opt
+
+abc -lut 4; opt
+
+techmap -map fpga_cells.v; opt
+
+stat

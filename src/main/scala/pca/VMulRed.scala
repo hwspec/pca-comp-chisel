@@ -49,9 +49,26 @@ class LocalRedRec(n: Int = 4, inbw: Int = 8) extends Module {
   io.out := stages(nstages-1).io.out(0)
 }
 
-object LocalRedRec extends App {
-  GenVerilog.generate(new LocalRedRec(n=4))
+class LocalRedBuiltIn(n: Int = 4, inbw: Int = 8) extends Module {
+  require(n >= 2 && (n & (n - 1)) == 0) // check see if n is a power of two number that is larger than 4
+
+  val nstages = log2Ceil(n)
+  val outbw = inbw + nstages
+  val io = IO(new Bundle {
+    val in = Input(Vec(n, SInt(inbw.W)))
+    val out = Output(SInt(outbw.W))
+  })
+  io.out := io.in.reduce(_ +& _)
 }
+
+object LocalRedRec extends App {
+  GenVerilog.generate(new LocalRedRec(n=64))
+}
+
+object LocalRedBuiltIn extends App {
+  GenVerilog.generate(new LocalRedBuiltIn(n=64))
+}
+
 
 class CompareRed(n: Int = 4, inbw: Int = 8) extends Module {
   require(n >= 2 && (n & (n - 1)) == 0) // check see if n is a power of two number that is larger than 4
