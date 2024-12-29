@@ -4,6 +4,18 @@ import chisel3._
 import chisel3.util._
 import common.GenVerilog
 
+//
+// parameters for the new design
+// * input images
+// width : the input image width
+// height : its height
+// pxbw: pixel bit width (unsigned int)
+// ngroups: shift groups
+// * pca
+// encsize : the maximum encoding size
+// encbw : encoding bit width (signed int)
+// qfactors: quantization factor (vector) needed on chip?
+//
 
 class PCAComp(ninpixels: Int = 256, ncolumns : Int = 16, pxbw: Int = 8, maxenc: Int = 30, encbw: Int = 8 ) extends Module {
   val io = IO(new Bundle {
