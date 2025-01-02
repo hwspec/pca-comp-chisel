@@ -27,14 +27,15 @@ class PCACompBlock(
                     encsize: Int = 30, // the maximum encoding size
                     encbw : Int = 8 // encoding bit width (signed int)
                   ) extends Module {
+
   val ninpixels = (width * height)
+
   val io = IO(new Bundle {
     val in = Flipped(Decoupled(Vec(ninpixels, UInt(pxbw.W))))
     val out = Decoupled(Vec(encsize, SInt(encbw.W))) // compressed data
     //
     val setencdata = Input(Bool()) // load encdata into encmat at encpos
     val getencdata = Input(Bool()) // load encdata into encmat at encpos
-    val encpos = Input(UInt(log2Ceil(ninpixels).W))
     val encdata = Input(Vec(ninpixels, Vec(encsize, SInt(encbw.W))))
     val encdataverify = Output(Vec(ninpixels, Vec(encsize, SInt(encbw.W))))
   })
@@ -43,15 +44,15 @@ class PCACompBlock(
   io.out.valid := false.B
   for (i <- 0 until encsize) io.out.bits(i) := 0.S
 
-  val encmat = Seq.fill(ninpixels) {SyncReadMem(width, Vec(encsize, SInt(encbw.W)))}
+  val encmat = Seq.fill(ninpixels) {SyncReadMem(1, Vec(encsize, SInt(encbw.W)))}
   when (io.setencdata) {
     for (b <- 0 until ninpixels) { // ninpixels banks
-      encmat(b)(io.encpos) := io.encdata(b)
+      encmat(b)(0) := io.encdata(b)
     }
   }
   when (io.getencdata) {
     for (b <- 0 until ninpixels) { // ninpixels banks
-      io.encdataverify(b) := encmat(b)(io.encpos)
+      io.encdataverify(b) := encmat(b)(0)
     }
   }.otherwise {
     for (b <- 0 until ninpixels) { // ninpixels banks
@@ -60,8 +61,6 @@ class PCACompBlock(
       }
     }
   }
-
-
 }
 
 object PCACompBlock extends App {
