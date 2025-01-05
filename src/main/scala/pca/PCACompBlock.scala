@@ -4,28 +4,15 @@ import chisel3._
 import chisel3.util._
 import common.GenVerilog
 
-//
-// design parameters for PCA-based compressor
-//
-// * input images
-// blockid: the PCA encoder block ID
-// pxbw: pixel bit width (unsigned int)
-// width: the number of the image columns that are shifted every cycles
-// height : per-block height
-//
-// * pca
-// encsize : the maximum encoding size
-// encbw : encoding bit width (signed int)
-// qfactors: quantization factor (vector) needed on chip?
-//
 class PCACompBlock(
-                    blockid: Int = 0,
-                    // pixel-sensor params
+                    blockid: Int = 0, // the PCA encoder block ID
+                    // pixel-sensor params. the width and height of a block
                     pxbw: Int = 12, width: Int = 8, height: Int = 8,
 
                     // PCA params
                     encsize: Int = 30, // the maximum encoding size
                     encbw : Int = 8, // encoding bit width (signed int)
+                    // qfactors: quantization factor (vector) needed on chip?
 
                     // computing/memory access parallelisms
                     nbanks : Int = 8  // up to width * height
