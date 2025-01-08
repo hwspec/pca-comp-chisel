@@ -15,7 +15,10 @@ class PCACompBlock(
                     // qfactors: quantization factor (vector) needed on chip?
 
                     // computing/memory access parallelisms
-                    nbanks : Int = 8  // up to width * height
+                    nbanks : Int = 8,  // up to width * height
+
+                    // other params
+                    debugprint: Boolean = true
                   ) extends Module {
 
   val ninpixels = (width * height)
@@ -57,7 +60,6 @@ class PCACompBlock(
     }
   }
 
-  //
   object PCACompState extends ChiselEnum {
     val Idle, InProcessing, Done = Value
   }
@@ -71,24 +73,44 @@ class PCACompBlock(
   io.in.ready := false.B
   io.out.valid := false.B
 
+  val groupposReg = RegInit(0.U(log2Ceil(npixelgroups).W))
+
+  val dummycntReg = RegInit(0.S(8.W))
+
   switch(stateReg) {
     is(Idle) {
       io.in.ready := true.B
       when(io.in.valid) {
+        if(debugprint) printf("Receiving the input\n")
+
         for (i <- 0 until ninpixels) {
           pixelReg(i) := io.in.bits(i)
         }
         for (i <- 0 until encsize) {
           resReg(i) := 0.S
         }
+        groupposReg := 0.U
         stateReg := InProcessing
       }
     }
     is(InProcessing) {
+      when(groupposReg <= npixelgroups.U) {
+        if(debugprint) printf("In Processing: pos=%d\n", groupposReg)
+        groupposReg := groupposReg + 1.U
+      }
       stateReg := Done
     }
     is(Done) {
-      stateReg := Idle
+      io.out.valid := true.B
+      when(io.out.ready) {
+        if(debugprint) printf("Sending the output\n")
+
+        for (i <- 0 until encsize) {
+          io.out.bits(i) := dummycntReg
+        }
+        dummycntReg := dummycntReg + 1.S
+        stateReg := Idle
+      }
     }
   }
 }
