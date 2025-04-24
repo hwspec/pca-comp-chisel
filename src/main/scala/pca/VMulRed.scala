@@ -24,7 +24,7 @@ object LocalRedStage extends App {
 class LocalRedRec(n: Int = 4, inbw: Int = 8) extends Module {
   require(n >= 2 && (n & (n - 1)) == 0) // check see if n is a power of two number that is larger than 4
 
-  override def desiredName = s"LocalRedRec_${n}_inbw${inbw}"
+  override def desiredName = s"LocalRedRec_n${n}_inbw${inbw}"
 
   val nstages = log2Ceil(n)
   val outbw = inbw + nstages
@@ -63,14 +63,16 @@ class LocalRedBuiltIn(n: Int = 4, inbw: Int = 8) extends Module {
     val out = Output(SInt(outbw.W))
   })
 
-  io.out := io.in.reduce(_ +& _) // the +& operation does extend the bit width?
+  io.out := io.in.reduce(_ +& _) // the +& operation does extend the bit width
 }
 
 object LocalRed extends App {
+  val bw = 8
 
-  List(64, 128, 256, 512, 1024).foreach { n =>
-    GenVerilog.generate(new LocalRedRec(n))
-    GenVerilog.generate(new LocalRedBuiltIn(n))
+//  List(64, 128, 256, 512, 1024).foreach { n =>
+    List(16).foreach { n =>
+    GenVerilog.generate(new LocalRedRec(n, bw))
+    GenVerilog.generate(new LocalRedBuiltIn(n, bw))
   }
 }
 
