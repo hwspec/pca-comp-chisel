@@ -20,6 +20,8 @@ class BaseLinePCAComp(
   val redbw = mulbw + log2Ceil(ninpixels) // internal use. reduction result
   val outbw = redbw - 1 // -1 due to zeroing out
 
+  override def desiredName = s"BaseLinePCAComp_${width}x${height}_bw${pxbw}_iembw${iembw}_sz${iemsize}"
+
   val io = IO(new Bundle {
     val npc = Input(UInt(log2Ceil(iemsize).W)) // the number of principal components
     val in  = Flipped(Decoupled(Vec(ninpixels, UInt(pxbw.W)))) // row measure
@@ -75,9 +77,7 @@ class BaseLinePCAComp(
   red.io.in := multiplied
   compdataReg(processingPos) := red.io.out
 
-
   io.in.ready := !inProcessing
-
 
   when(io.in.valid && !inProcessing) {
     // initialize
@@ -110,9 +110,12 @@ class BaseLinePCAComp(
 }
 
 object BaseLinePCAComp extends App {
-  GenVerilog.generate(new BaseLinePCAComp(
-    pxbw = 10, width = 16, height = 16,
-    iemsize = 50, iembw = 8,
-    debugprint = true
-  ))
+
+  Seq(16).foreach { len =>
+    GenVerilog.generate(new BaseLinePCAComp(
+      pxbw = 10, width = len, height = len,
+      iemsize = 50, iembw = 8,
+      debugprint = true
+    ))
+  }
 }
