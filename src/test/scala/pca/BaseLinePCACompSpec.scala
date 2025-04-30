@@ -51,8 +51,6 @@ class BaseLinePCACompSpec extends AnyFlatSpec {
   val PXBW  = 8
   val IEMBW = 8
 
-  val pcaref = new PCARef(N, M, PXBW, IEMBW)
-
   def resetBaseLinePCAComp(dut: BaseLinePCAComp): Unit = {
     // EphemeralSimulator required a reset explicitly for some reason
     dut.reset.poke(true)
@@ -61,12 +59,12 @@ class BaseLinePCACompSpec extends AnyFlatSpec {
     dut.clock.step(1) // initialize the regs with default value
   }
 
-  def uploadRefBaseLinePCAComp(dut: BaseLinePCAComp, verify: Boolean = false): Unit = {
+  def uploadRefBaseLinePCAComp(dut: BaseLinePCAComp, refpca: PCARef, verify: Boolean = false): Unit = {
     dut.io.updateIEM.poke(true)
     for(iempos <- 0 until M) {
       dut.io.iempos.poke(iempos)
       for(pxpos <- 0 until N) {
-        dut.io.iemdata(pxpos).poke(pcaref.matrix(iempos)(pxpos))
+        dut.io.iemdata(pxpos).poke(refpca.matrix(iempos)(pxpos))
       }
       dut.clock.step()
     }
@@ -80,8 +78,8 @@ class BaseLinePCACompSpec extends AnyFlatSpec {
 
         for (pxpos <- 0 until N) {
           val hw = dut.io.iemdataverify(pxpos).peek().litValue.toInt
-          val ref = pcaref.matrix(iempos)(pxpos)
-          assert(hw == ref, f"hw=$hw ref=$ref at iempos${iempos}/pxpos${pxpos}")
+          val e = refpca.matrix(iempos)(pxpos)
+          assert(hw == e, f"hw=$hw ref=$e at iempos${iempos}/pxpos${pxpos}")
         }
       }
       dut.io.verifyIEM.poke(false)
@@ -95,8 +93,9 @@ class BaseLinePCACompSpec extends AnyFlatSpec {
       iemsize = M, iembw = IEMBW,
       debugprint = false)) { dut =>
 
-      uploadRefBaseLinePCAComp(dut, verify = true)
+      val pcaref = new PCARef(N, M, PXBW, IEMBW)
+
+      uploadRefBaseLinePCAComp(dut, pcaref, verify = true)
     }
   }
-
 }

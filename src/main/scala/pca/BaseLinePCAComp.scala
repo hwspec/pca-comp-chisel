@@ -55,17 +55,8 @@ class BaseLinePCAComp(
     val iemdataverify = Output(Vec(ninpixels, SInt(iembw.W)))
   })
 
-
-  // iemmats.foreach(row => row.foreach(dontTouch(_)))
-//  val iemmats = VecInit(Seq.fill(iemsize)(
-//        RegInit(VecInit(Seq.fill(ninpixels)(0.S(iembw.W))))
-//  ))
-
-
   val iemmats = Seq.fill(iemsize)(Module(new PCData(
     width, height, iembw, debugprint)))
-
-
 
   val zeroVec = VecInit(Seq.fill(ninpixels)(0.S(iembw.W)))
   for (i <- 0 until iemsize) {
@@ -78,7 +69,8 @@ class BaseLinePCAComp(
 
   val clk = RegInit(0.U(5.W))
   clk := clk + 1.U
-  printf("clk%d iemmats(0)(0)=%d\n", clk, iemmats(0).io.out(0))
+  if(debugprint)
+    printf("clk%d iemmats(0)(0)=%d\n", clk, iemmats(0).io.out(0))
 
   when(io.updateIEM) {
     for(memid <- 0 until iemsize) {
