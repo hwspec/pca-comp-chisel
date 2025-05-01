@@ -87,6 +87,22 @@ class BaseLinePCACompSpec extends AnyFlatSpec {
     }
   }
 
+  def computeAndCompare(dut: BaseLinePCAComp, refpca: PCARef) : Unit = {
+    dut.io.updateIEM.poke(false)
+    dut.io.verifyIEM.poke(false)
+
+    dut.io.in.ready.expect(1)
+
+    dut.io.npc.poke(1) // just single principal component first
+    for ((elem, idx) <- refpca.row.zipWithIndex) {
+      dut.io.in.bits(idx).poke(elem)
+    }
+    dut.io.in.valid.poke(true)
+    dut.clock.step()
+
+  }
+
+
   "iem update test" should "pass" in {
     simulate(new BaseLinePCAComp(
       pxbw = PXBW, width = W, height = H,
@@ -96,6 +112,11 @@ class BaseLinePCACompSpec extends AnyFlatSpec {
       val pcaref = new PCARef(N, M, PXBW, IEMBW)
 
       uploadRefBaseLinePCAComp(dut, pcaref, verify = true)
+
+      computeAndCompare(dut, pcaref)
+
+      val result = pcaref.rowVectorMatrixProduct()
+      println("Result: " + result.mkString("[", ", ", "]"))
     }
   }
 }

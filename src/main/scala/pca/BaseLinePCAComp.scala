@@ -118,6 +118,8 @@ class BaseLinePCAComp(
   red.io.in := multiplied
 
   when(io.in.valid && !inProcessing) {
+    if(debugprint) printf("new pixel data: %d", red.io.out)
+
     inpixelsReg := io.in.bits // keep for the next cycle
 
     // the first principal component
