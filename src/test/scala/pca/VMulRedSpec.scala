@@ -9,12 +9,13 @@ class CompareRedSpec extends CommonSpecConfig {
 
   val n = 4
   val inbw = 8
+  val rng = new Random(11)
+  val testdata = List.tabulate(n) { i =>
+    rng.nextInt((1<<(inbw-1)))
+  }
 
   "basic test" should "pass" in {
     test(new CompareRed(n, inbw)) { dut =>
-      val testdata = List.tabulate(n) { i =>
-        Random.nextInt((1<<(inbw-1)))
-      }
       val ref = testdata.reduce(_ + _)
       testdata.zipWithIndex.foreach{ case(v,idx) =>
         dut.io.in(idx).poke(v)
@@ -22,6 +23,8 @@ class CompareRedSpec extends CommonSpecConfig {
       val o1 = dut.io.out1.peekInt()
       val o2 = dut.io.out2.peekInt()
       println(s"$o1 $o2 $ref")
+      assert(o1 == ref, s"o1:${o1} did not match with ref:${ref}")
+      assert(o1 == o2, s"o1:${o1} did not match with o2:${o2}")
     }
   }
 }
@@ -68,4 +71,24 @@ class VMulRedSpec extends CommonSpecConfig {
 
   "VMulRed max" should "pass" in testLoop(input_px_max, input_iem_max)
   "VMulRed rnd" should "pass" in testLoop(input_px_rnd, input_iem_rnd)
+
+  "Fixed" should "pass" in {
+    val N = 4
+    val PXBW  = 4
+    val IEMBW = 6
+
+    val pxdata = Seq(11, 11, 6, 3)
+    val iemdata = Seq(8, -7, -31, 26)
+    val ref = pxdata.zip(iemdata).map {case (a,b) => a * b}.reduce(_ + _)
+
+    test(new VMulRed(n=N, nbits_px=PXBW, nbits_iem=IEMBW))
+    { c =>
+      pxdata.zip(iemdata).zipWithIndex.foreach { case ((px, iem), idx) =>
+        c.io.in_px(idx).poke(px)
+        c.io.in_iem(idx).poke(iem)
+      }
+      println(f"out=${c.io.out.peek().litValue}  expected=${ref}")
+      c.io.out.expect(ref)
+    }
+  }
 }

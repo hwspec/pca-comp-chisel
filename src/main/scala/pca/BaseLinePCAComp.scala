@@ -69,15 +69,19 @@ class BaseLinePCAComp(
 
   val clk = RegInit(0.U(5.W))
   clk := clk + 1.U
-  if(debugprint)
-    printf("clk%d iemmats(0)(0)=%d\n", clk, iemmats(0).io.out(0))
+//  if(debugprint)
+//    printf("clk%d iemmats(0)(0)=%d\n", clk, iemmats(0).io.out(0))
 
   when(io.updateIEM) {
     for(memid <- 0 until iemsize) {
       when(io.iempos === memid.U) {
         iemmats(memid).io.update := true.B
         iemmats(memid).io.in := io.iemdata
-        if(debugprint) printf("clk%d memid%d indata(0)=%d\n", clk, memid.U, io.iemdata(0))
+        if(debugprint) {
+          // does not look that printf prints SInt correctly
+          printf("clk%d id%d data=%d,%d iembw=%d\n", clk, memid.U, io.iemdata(0), io.iemdata(1), iembw.U)
+          // printf(p"${io.iemdata(1).getClass.getSimpleName} ${io.iemdata(1).asSInt}\n")
+        }
       }
     }
   }
@@ -86,7 +90,7 @@ class BaseLinePCAComp(
     for(memid <- 0 until iemsize) {
       when(io.iempos === memid.U) {
         io.iemdataverify := iemmats(memid).io.out
-        if(debugprint) printf("verify: memid%d regdata(0)=%d\n", memid.U,
+        if(debugprint) printf("verify: memid%d data(0)=%d\n", memid.U,
           iemmats(memid).io.out(0))
       }
     }
@@ -109,8 +113,10 @@ class BaseLinePCAComp(
 
   for(iempos <- 0 until iemsize) {
     when(processingPos === iempos.U) {
+      printf("iempos=%d\n", processingPos)
       for (i <- 0 until ninpixels) {
         multiplied(i) := io.in.bits(i) * iemmats(iempos).io.out(i)
+        printf("  %d * %d => %d\n", io.in.bits(i) , iemmats(iempos).io.out(i), multiplied(i))
       }
     }
   }

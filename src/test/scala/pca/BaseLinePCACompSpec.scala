@@ -12,19 +12,20 @@ class PCARef(N: Int, M: Int, PXBW: Int, IEMBW: Int, seed: Option[Long] = Some(11
     case None       => new scala.util.Random()
   }
 
-  val maxUnsigned = (1 << PXBW) - 1
-  val row = Array.fill(N)(rng.nextInt(maxUnsigned + 1))
+  val maxUnsignedPXBW = (1 << PXBW) - 1
+  val row = Array.fill(N)(rng.nextInt(maxUnsignedPXBW+1))
 
-  val minSigned = -(1 << (IEMBW - 1))
-  val maxSigned = (1 << (IEMBW - 1)) - 1
   // Note: transposed for easier principal component access
-  val matrix = Array.fill(M, N)(rng.between(minSigned, maxSigned + 1))
+  val maxAbsIEMBW = (1 << (IEMBW - 1))
+  val matrix = Array.fill(M, N)(rng.between(-maxAbsIEMBW, maxAbsIEMBW))
 
-  def rowVectorMatrixProduct(): Array[Int] = {
+
+
+  def rowVectorMatrixProduct(): Array[Long] = {
     require(row.length == matrix(0).length, "Row-vector length must match number of matrix rows")
     val M = matrix.length
     Array.tabulate(M) { j =>
-      (0 until row.length).map(i => row(i) * matrix(j)(i)).sum
+      (0 until row.length).map(i => row(i).toLong * matrix(j)(i).toLong).sum
     }
   }
 }
@@ -52,8 +53,8 @@ class BaseLinePCACompSpec extends AnyFlatSpec {
   val H = W
   val N = W * H
   val M = 3
-  val PXBW  = 8
-  val IEMBW = 8
+  val PXBW  = 4
+  val IEMBW = 6
 
   def resetBaseLinePCAComp(dut: BaseLinePCAComp): Unit = {
     // EphemeralSimulator required a reset explicitly for some reason
@@ -68,7 +69,9 @@ class BaseLinePCACompSpec extends AnyFlatSpec {
     for(iempos <- 0 until M) {
       dut.io.iempos.poke(iempos)
       for(pxpos <- 0 until N) {
-        dut.io.iemdata(pxpos).poke(refpca.matrix(iempos)(pxpos))
+        val v = refpca.matrix(iempos)(pxpos)
+        println(f"iem${iempos}:px${pxpos} ${v}")
+        dut.io.iemdata(pxpos).poke(v.S(IEMBW.W))
       }
       dut.clock.step()
     }
