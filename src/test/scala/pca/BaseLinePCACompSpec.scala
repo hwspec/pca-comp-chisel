@@ -2,6 +2,7 @@ package pca
 
 import chisel3._
 import chisel3.simulator.VCDHackedEphemeralSimulator._
+import common.GenVerilog
 
 import scala.util.Random
 import org.scalatest.flatspec.AnyFlatSpec
@@ -28,6 +29,14 @@ class PCARef(N: Int, M: Int, PXBW: Int, IEMBW: Int, seed: Option[Long] = Some(11
       (0 until row.length).map(i => row(i).toLong * matrix(j)(i).toLong).sum
     }
   }
+
+  def print(): Unit = {
+    val result = rowVectorMatrixProduct()
+    println("Row Vector: " + row.mkString("[", ", ", "]"))
+    println("Matrix:")
+    matrix.foreach(row => println(row.mkString("[", ", ", "]")))
+    println("Result: " + result.mkString("[", ", ", "]"))
+  }
 }
 
 object PCARefTest extends App {
@@ -37,13 +46,7 @@ object PCARefTest extends App {
   val IEMBW = 8
 
   val pcaref = new PCARef(N, M, PXBW, IEMBW)
-
-  val result = pcaref.rowVectorMatrixProduct()
-
-  println("Row Vector: " + pcaref.row.mkString("[", ", ", "]"))
-  println("Matrix:")
-  pcaref.matrix.foreach(row => println(row.mkString("[", ", ", "]")))
-  println("Result: " + result.mkString("[", ", ", "]"))
+  pcaref.print()
 }
 
 class BaseLinePCACompSpec extends AnyFlatSpec {
@@ -70,7 +73,7 @@ class BaseLinePCACompSpec extends AnyFlatSpec {
       dut.io.iempos.poke(iempos)
       for(pxpos <- 0 until N) {
         val v = refpca.matrix(iempos)(pxpos)
-        println(f"iem${iempos}:px${pxpos} ${v}")
+        //println(f"iem${iempos}:px${pxpos} ${v}")
         dut.io.iemdata(pxpos).poke(v.S(IEMBW.W))
       }
       dut.clock.step()
@@ -107,26 +110,28 @@ class BaseLinePCACompSpec extends AnyFlatSpec {
     dut.io.in.valid.poke(true)
     dut.clock.step()
 
+    dut.io.out.ready.poke(true)
+    dut.io.out.valid.expect(true.B)
+    for ((elem, idx) <- refpca.rowVectorMatrixProduct().zipWithIndex) {
+      val v = dut.io.out.bits(idx).peek().litValue.toLong
+      assert(v == elem, s"dut=${v} != ref=${elem}")
+      dut.clock.step()
+    }
+    dut.io.out.ready.poke(false)
   }
-
 
   "iem update test" should "pass" in {
     simulate(new BaseLinePCAComp(
       pxbw = PXBW, width = W, height = H,
       iemsize = M, iembw = IEMBW,
-      debugprint = true)) { dut =>
+      debugprint = false)) { dut =>
 
       val pcaref = new PCARef(N, M, PXBW, IEMBW)
+      // pcaref.print()
 
       uploadRefBaseLinePCAComp(dut, pcaref, verify = true)
 
       computeAndCompare(dut, pcaref)
-
-      println("Row Vector: " + pcaref.row.mkString("[", ", ", "]"))
-      println("Matrix:")
-      pcaref.matrix.foreach(row => println(row.mkString("[", ", ", "]")))
-      val result = pcaref.rowVectorMatrixProduct()
-      println("Result: " + result.mkString("[", ", ", "]"))
     }
   }
 }

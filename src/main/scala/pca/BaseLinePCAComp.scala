@@ -113,10 +113,8 @@ class BaseLinePCAComp(
 
   for(iempos <- 0 until iemsize) {
     when(processingPos === iempos.U) {
-      printf("iempos=%d\n", processingPos)
       for (i <- 0 until ninpixels) {
         multiplied(i) := io.in.bits(i) * iemmats(iempos).io.out(i)
-        printf("  %d * %d => %d\n", io.in.bits(i) , iemmats(iempos).io.out(i), multiplied(i))
       }
     }
   }
