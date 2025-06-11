@@ -13,7 +13,9 @@ object GenVerilog {
     "--lowering-options=disallowLocalVariables,disallowPackedArrays",
     "--verilog",
   )
-
+  def apply(gen: => RawModule) : Unit = {
+    generate(gen)
+  }
   def generate(gen: => RawModule) : Unit = {
     ChiselStage.emitSystemVerilogFile(gen,
       args = args_a,
