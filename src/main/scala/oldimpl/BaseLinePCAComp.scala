@@ -1,8 +1,9 @@
-package pca
+package oldimpl
 
 import chisel3._
 import chisel3.util._
 import common.GenVerilog
+import scratch.LocalRedBuiltIn
 
 // Baseline works only for small-sized pixel arrays and assumes no shift strategy.
 // This is intended for conceptual implementation only.

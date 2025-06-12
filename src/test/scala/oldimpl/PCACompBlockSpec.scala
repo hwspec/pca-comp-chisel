@@ -1,8 +1,7 @@
 
-package pca
+package oldimpl
 
 import chiseltest._
-import scala.util.Random
 import common.CommonSpecConfig
 
 class PCACompBlockSpec extends CommonSpecConfig {

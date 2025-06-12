@@ -5,132 +5,109 @@ import chisel3.util._
 import common.GenVerilog
 
 class PCACompBlock(
-                    blockid: Int = 0, // the PCA encoder block ID
-                    // pixel-sensor params. the width and height of a block
-                    pxbw: Int = 12, width: Int = 8, height: Int = 8,
+                        // pixel-sensor params. the width and height of a block
+                        ncols: Int = 192, // the numbers of the pixel-sensor columns
+                        nrows: Int = 168, // the numbers of the pixel-sensor rows
+                        pxbw: Int = 12, // pixel bit width
+                        width: Int = 32, // width for this block. ncols%widht == 0
+                        // PCA params, iem=inverse encoding matrix
+                        nmaxpcs  : Int = 60, // the max number of principal components
+                        iemfloat : Boolean = false, // false: signed integer
+                        iembw    : Int = 8, // encoding bit width for int, mantissa bit for float
+                        iemexp   : Int = 0, // exponent bit for float. unused for signed integer
+                        // other params
+                        debugprint: Boolean = true
+                      ) extends Module {
 
-                    // PCA params
-                    encsize: Int = 30, // the maximum encoding size
-                    encbw : Int = 8, // encoding bit width (signed int)
-                    // qfactors: quantization factor (vector) needed on chip?
+  require((ncols % width) == 0)
+  require(iemfloat == false, "float is not supported yet")
 
-                    // computing/memory access parallelisms
-                    nbanks : Int = 8,  // up to width * height
+  private val mulbw = pxbw + iembw // internal use. signed
+  val redbw = if (iemfloat) {
+    mulbw + log2Ceil(width) + log2Ceil(nrows) // reduction result
+  } else {
+    1 + iemexp + iembw
+  }
 
-                    // other params
-                    debugprint: Boolean = true
-                  ) extends Module {
+  val databw = if (iemfloat) {
+    1 + iemexp + iembw
+  } else iembw
+  val busbw = width * databw
 
-  val ninpixels = (width * height)
-  val npixelgroups = ninpixels/nbanks
-
-  require((ninpixels % nbanks) == 0)
-  require(npixelgroups >= nbanks)
-
-  // println(f"ninpixels=$ninpixels npixelgroups=$npixelgroups")
+  override def desiredName = s"BaseLinePCAComp_pxbw${pxbw}_w${width}_iembw${iembw}_npcs${nmaxpcs}"
 
   val io = IO(new Bundle {
-    val in = Flipped(Decoupled(Vec(ninpixels, UInt(pxbw.W))))
-    val out = Decoupled(Vec(encsize, SInt(encbw.W))) // compressed data
-    //
-    val setencdata = Input(Bool()) // load encdata into encmat at encpos
-    val getencdata = Input(Bool()) // load encdata into encmat at encpos
-    val pxgrouppos = Input(UInt(log2Ceil(npixelgroups).W))
-    val encdata = Input(Vec(nbanks, Vec(encsize, SInt(encbw.W))))
-    val encdataverify = Output(Vec(nbanks, Vec(encsize, SInt(encbw.W))))
-  })
-  for (i <- 0 until encsize) io.out.bits(i) := 0.S
+    // input : no stall condition for now
+    // val npc = Input(UInt(log2Ceil(nmaxpcs).W)) // the number of principal components used
+    val rowid = Input(UInt(log2Ceil(nrows).W))
+    val invalid = Input(Bool())
+    val indata = Input(Vec(width, UInt(pxbw.W)))
+    // output
+    val out = Output(Vec(nmaxpcs, SInt(redbw.W)))
 
-  // encoding matrix
-  val encmat = Seq.fill(nbanks) {SyncReadMem(npixelgroups, Vec(encsize, SInt(encbw.W)))}
-  when (io.setencdata) {
-    for (b <- 0 until nbanks) {
-      encmat(b).write(io.pxgrouppos, io.encdata(b))
+    // initialize memory with the inverse encoding matrix content for this block
+    val updateIEM = Input(Bool()) // load imedata into mem
+    val verifyIEM = Input(Bool()) // read mem for verification
+    val rowpos = Input(UInt(log2Ceil(nrows).W))
+    val iempos = Input(UInt(log2Ceil(nmaxpcs).W))
+    val iemdata = Input(Vec(width, SInt(iembw.W)))
+    val iemdataverify = Output(Vec(width, SInt(iembw.W)))
+  })
+
+  io.iemdataverify := 0.U.asTypeOf(Vec(width, SInt(iembw.W)))
+
+  val mems = Seq.fill(nmaxpcs)(SyncReadMem(nrows, UInt(busbw.W)))
+
+  val dataReceived = RegInit(false.B)
+
+  when(io.updateIEM) {
+    for(i <- 0 until nmaxpcs) {
+      when(io.iempos === i.U) {
+        mems(i).write(io.rowpos, io.iemdata.asTypeOf(UInt(busbw.W)))
+      }
     }
-  }
-  when (io.getencdata) {
-    for (b <- 0 until nbanks) {
-      io.encdataverify(b) := encmat(b).read(io.pxgrouppos)
+  }.elsewhen(io.verifyIEM) {
+    for(i <- 0 until nmaxpcs) {
+      when(io.iempos === i.U) {
+        io.iemdataverify := mems(i).read(io.rowpos, true.B).asTypeOf(Vec(width, SInt(iembw.W))) // available in cycle later
+      }
     }
   }.otherwise {
-    for (b <- 0 until nbanks) {
-      for (i <- 0 until encsize) {
-        io.encdataverify(b)(i) := 0.S
-      }
+    when(io.invalid) {
+      dataReceived := true.B
+    }.otherwise {
+      dataReceived := false.B
     }
   }
 
-  object PCACompState extends ChiselEnum {
-    val Idle, InProcessing, Done = Value
-  }
-  import PCACompState._
+  val fromiem = Wire(Vec(nmaxpcs, Vec(width, SInt(iembw.W))))
+  val multiplied = Wire(Vec(nmaxpcs, Vec(width, SInt((pxbw+iembw).W))))
+  val partialcompressed = Wire(Vec(nmaxpcs,SInt(redbw.W)))
+  val compressedAccReg = RegInit(VecInit(Seq.fill(nmaxpcs)(0.S(redbw.W))))
+  val compressedReg = RegInit(VecInit(Seq.fill(nmaxpcs)(0.S(redbw.W))))
 
-  val stateReg = RegInit(Idle)
-
-  val pixelReg = RegInit(VecInit(Seq.fill(ninpixels)(0.U(pxbw.W))))
-  val resReg = RegInit(VecInit(Seq.fill(encsize)(0.S(encbw.W))))
-
-  io.in.ready := false.B
-  io.out.valid := false.B
-
-  val groupposReg = RegInit(0.U(log2Ceil(npixelgroups).W))
-
-  val dummycntReg = RegInit(0.S(8.W))
-
-  switch(stateReg) {
-    is(Idle) {
-      io.in.ready := true.B
-      when(io.in.valid) {
-        if(debugprint) printf("Receiving the input\n")
-
-        for (i <- 0 until ninpixels) {
-          pixelReg(i) := io.in.bits(i)
-        }
-        for (i <- 0 until encsize) {
-          resReg(i) := 0.S
-        }
-        groupposReg := 0.U
-        stateReg := InProcessing
+  for(pos <- 0 until nmaxpcs) {
+    fromiem(pos) := mems(pos).read(io.rowid, true.B).asTypeOf(Vec(width, SInt(iembw.W)))
+    when(dataReceived) {
+      for (x <- 0 until width) {
+        multiplied(pos)(x) := fromiem(pos)(x) * io.indata(x)
       }
+      partialcompressed(pos) := multiplied(pos).reduce(_ +& _)
+    }.otherwise {
+      for (x <- 0 until width) {
+        multiplied(pos)(x) := 0.S
+      }
+      partialcompressed(pos) := 0.S
     }
-    is(InProcessing) {
-      when(groupposReg <= npixelgroups.U) {
-        if(debugprint) printf("In Processing: pos=%d\n", groupposReg)
-        groupposReg := groupposReg + 1.U
-      }
-      stateReg := Done
-    }
-    is(Done) {
-      io.out.valid := true.B
-      when(io.out.ready) {
-        if(debugprint) printf("Sending the output\n")
-
-        for (i <- 0 until encsize) {
-          io.out.bits(i) := dummycntReg
-        }
-        dummycntReg := dummycntReg + 1.S
-        stateReg := Idle
-      }
+    compressedAccReg(pos) := compressedAccReg(pos) + partialcompressed(pos)
+    when(io.rowid === (nrows-1).U) {
+      compressedReg(pos) := compressedAccReg(pos)
     }
   }
+
+  io.out := compressedReg
 }
 
 object PCACompBlock extends App {
-  val blockid : Int = 0
-  val pxbw: Int = 12
-  val width: Int = 16
-  val height: Int = 16
-  val encsize: Int = 30
-  val encbw : Int = 8
-  val nbanks : Int = 8
-
-  GenVerilog.generate(new PCACompBlock(
-    blockid = blockid,
-    pxbw = pxbw,
-    width = width,
-    height = height,
-    encsize = encsize,
-    encbw = encbw,
-    nbanks = nbanks
-  ))
+  GenVerilog(new PCACompBlock)
 }

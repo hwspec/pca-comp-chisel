@@ -1,10 +1,7 @@
-package pca
+package oldimpl
 
 import chisel3._
 import chisel3.simulator.VCDHackedEphemeralSimulator._
-import common.GenVerilog
-
-import scala.util.Random
 import org.scalatest.flatspec.AnyFlatSpec
 
 class PCARef(N: Int, M: Int, PXBW: Int, IEMBW: Int, seed: Option[Long] = Some(11L)) {

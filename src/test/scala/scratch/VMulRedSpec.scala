@@ -1,8 +1,9 @@
-package pca
+package scratch
 
 import chiseltest._
-import scala.util.Random
 import common.CommonSpecConfig
+
+import scala.util.Random
 
 class CompareRedSpec extends CommonSpecConfig {
   behavior of "CompareRed"
