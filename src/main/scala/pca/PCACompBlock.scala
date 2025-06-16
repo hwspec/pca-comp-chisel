@@ -6,13 +6,13 @@ import common.GenVerilog
 
 class PCACompBlock(
                         // pixel-sensor params. the width and height of a block
-                        ncols: Int = 192, // the numbers of the pixel-sensor columns
-                        nrows: Int = 168, // the numbers of the pixel-sensor rows
-                        pxbw: Int = 12, // pixel bit width
-                        width: Int = 16, // width for this block. ncols%widht == 0
+                        val ncols: Int = 192, // the numbers of the pixel-sensor columns
+                        val nrows: Int = 168, // the numbers of the pixel-sensor rows
+                        val pxbw: Int = 12, // pixel bit width
+                        val width: Int = 32, // width for this block. ncols%widht == 0
                         // PCA params, iem=inverse encoding matrix
-                        nmaxpcs  : Int = 60, // the max number of principal components
-                        iembw    : Int = 8, // encoding bit width for int, mantissa bit for float
+                        val nmaxpcs  : Int = 60, // the max number of principal components
+                        val iembw    : Int = 8, // encoding bit width for int, mantissa bit for float
                         // other params
                         debugprint: Boolean = true
                       ) extends Module {
