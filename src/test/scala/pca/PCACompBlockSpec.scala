@@ -6,6 +6,7 @@ import scala.util.Random
 import org.scalatest.flatspec.AnyFlatSpec
 import chisel3.simulator.EphemeralSimulator._
 //import chisel3.simulator.ChiselSim  // for 7.0 or later
+import scala.collection.mutable.ArrayBuffer
 
 class PCACompBlockSpec extends AnyFlatSpec {
   behavior of "PCACompBlock"
@@ -100,37 +101,46 @@ class PCACompBlockSpec extends AnyFlatSpec {
         "failed"
       }
       if(resarray.sameElements(td.blockref(blockid))) {
-        printRefandRes()
+        // printRefandRes()
       } else {
-        assert(false, printRefandRes)  // 'if' due to no lazy eval of printefandRes
+        assert(false, printRefandRes())  // 'if' due to no lazy eval of printefandRes
       }
     }
     ret
   }
 
-  "Single small config" should "pass" in {
-    val cfg = PCAConfigPresets.small
+  def singleBlockTest(cfg: PCAConfig) : Unit = {
     val td = new PCATestData(cfg)
     testPCACompBlock(cfg, td, blockid = 0)
   }
 
-  "Single large config" should "pass" in {
-    val cfg = PCAConfigPresets.large
-    val td = new PCATestData(cfg)
-    testPCACompBlock(cfg, td, blockid = 0)
-  }
+  "Single small config" should "pass" in singleBlockTest(PCAConfigPresets.small)
 
-  import scala.collection.mutable.ArrayBuffer
+  "Single large config" should "pass" in singleBlockTest(PCAConfigPresets.large)
 
-  "Multiple small config sequentially" should "pass" in {
-    val cfg = PCAConfigPresets.large
+
+  def multipleBlockTest(cfg: PCAConfig) : Unit = {
     val td = new PCATestData(cfg)
     val partialsbuf = ArrayBuffer[Array[Long]]()
-    for(blockid <- 0 until cfg.nblocks) {
+    for (blockid <- 0 until cfg.nblocks) {
       partialsbuf += testPCACompBlock(cfg, td, blockid)
     }
-    val summed : Array[Long] = partialsbuf.toArray.transpose.map(_.sum)
-    println(summed.mkString(" "))
-    println(td.ref.mkString(" "))
+    val summed: Array[Long] = partialsbuf.toArray.transpose.map(_.sum)
+
+    def printRefandRes(): String = {
+      println(summed.mkString(" "))
+      println(td.ref.mkString(" "))
+      "failed"
+    }
+
+    if (summed.sameElements(td.ref)) {
+      // printRefandRes()
+    } else {
+      assert(false, printRefandRes()) // 'if' due to no lazy eval of printefandRes
+    }
   }
+
+  "Multiple small config" should "pass" in multipleBlockTest(PCAConfigPresets.small)
+
+  "Multiple large config" should "pass" in multipleBlockTest(PCAConfigPresets.large)
 }
