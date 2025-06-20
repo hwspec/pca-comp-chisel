@@ -35,7 +35,7 @@ class PCACompBlock(cfg: PCAConfig = PCAConfigPresets.default,
     val indatavalid = Input(Bool())
 
     // output
-    val out = Output(Vec(nmaxpcs, SInt(redbw.W)))
+    val out = Decoupled(UInt((nmaxpcs*redbw).W))
 
     // initialize memory with the inverse encoding matrix content for this block
     val updateIEM = Input(Bool()) // load imedata into mem
@@ -45,13 +45,17 @@ class PCACompBlock(cfg: PCAConfig = PCAConfigPresets.default,
     val iemdataverify = Output(UInt((width*iembw).W))
   })
 
+  val clk = RegInit(0.U(10.W))
+  clk := clk + 1.U
+
   val indatavec = io.indata.asTypeOf(Vec(width, UInt(pxbw.W)))
 
   io.iemdataverify := 0.U
+  io.out.bits := 0.U
+  io.out.valid := false.B
 
   val mems = Seq.fill(nmaxpcs)(SyncReadMem(nrows, UInt(busbw.W)))
 
-  val dataReceivedReg = RegInit(false.B)
   val memaddr  = Wire(UInt(log2Ceil(nrows).W))
   val memrdata = Wire(Vec(nmaxpcs, UInt(busbw.W)))
 
@@ -69,6 +73,8 @@ class PCACompBlock(cfg: PCAConfig = PCAConfigPresets.default,
 //    }
   }
 
+  val dataReceivedStageReg = RegInit(false.B)
+
   when(io.updateIEM) {
     for(i <- 0 until nmaxpcs) {
       when(io.iempos === i.U) {
@@ -83,19 +89,17 @@ class PCACompBlock(cfg: PCAConfig = PCAConfigPresets.default,
   }.otherwise {
     // compute mode
     when(io.indatavalid) {
-      dataReceivedReg := true.B
+      dataReceivedStageReg := true.B
     }.otherwise {
-      dataReceivedReg := false.B
+      dataReceivedStageReg := false.B
     }
   }
 
   val fromiem = Wire(Vec(nmaxpcs, Vec(width, SInt(iembw.W))))
-  // val multiplied = Wire(Vec(nmaxpcs, Vec(width, SInt((pxbw+iembw).W))))
-  // val partialcompressed = Wire(Vec(nmaxpcs,SInt(redbw.W)))
   val multiplied = Reg(Vec(nmaxpcs, Vec(width, SInt((pxbw + iembw).W))))
   val partialcompressed = Reg(Vec(nmaxpcs, SInt(redbw.W)))
   val compressedAccReg = RegInit(VecInit(Seq.fill(nmaxpcs)(0.S(redbw.W))))
-  val compressedReg = RegInit(VecInit(Seq.fill(nmaxpcs)(0.S(redbw.W))))
+  val compressedReg = RegInit(0.U((nmaxpcs*redbw).W))
 
   for(pos <- 0 until nmaxpcs) {
     for (x <- 0 until width) {
@@ -108,48 +112,82 @@ class PCACompBlock(cfg: PCAConfig = PCAConfigPresets.default,
     fromiem(pos) := memrdata(pos).asTypeOf(Vec(width, SInt(iembw.W)))
   }
 
-  val multipliedReg = RegInit(false.B)
-  val reducedReg    = RegInit(false.B)
+  val multipliedStageReg = RegInit(false.B)
+  val reducedStageReg    = RegInit(false.B)
+  val enqOutQReg = RegInit(false.B)
 
-  multipliedReg := dataReceivedReg
-  reducedReg := multipliedReg
+  multipliedStageReg := dataReceivedStageReg
+  reducedStageReg := multipliedStageReg
 
-  when(dataReceivedReg) {
-    if(debugprint) { printf("stage: dataReceived\n")  }
+  val rowidDelayed = ShiftRegister(io.rowid, 3)
+
+  when(dataReceivedStageReg) {
+    if(debugprint) { printf("%d stage: dataReceived\n",clk)  }
     for (pos <- 0 until nmaxpcs) {
       if(debugprint) { printf("  pos%d: ", pos.U) }
       for (x <- 0 until width) {
         multiplied(pos)(x) := fromiem(pos)(x) * indatavec(x)
         if(debugprint) {
-          printf("%d*%d, ", fromiem(pos)(x), indatavec(x))
+          printf("%x*%x, ", fromiem(pos)(x), indatavec(x))
         }
       }
       if(debugprint) { printf("\n") }
     }
   }
-  when(multipliedReg) {
-    if(debugprint) { printf("stage: multiplied\n")  }
-
+  when(multipliedStageReg) {
+    if(debugprint) { printf("%d stage: multiplied\n", clk)  }
     for (pos <- 0 until nmaxpcs) {
       partialcompressed(pos) := multiplied(pos).reduce(_ +& _)
       if (debugprint) {
-        printf("  pos%d: partial=%d %d\n", pos.U, partialcompressed(pos),multiplied(pos)(0) )
+        printf("  pos%d: ", pos.U)
+        for (x <- 0 until width) {
+          printf("%x ", multiplied(pos)(x))
+        }
+        printf("\n")
       }
     }
   }
-  when(reducedReg) {
-    if(debugprint) { printf("stage: reduced\n")  }
 
-    for (pos <- 0 until nmaxpcs) {
-      compressedAccReg(pos) := compressedAccReg(pos) + partialcompressed(pos)
-      when(io.rowid === (nrows - 1).U) {
-        compressedReg(pos) := compressedAccReg(pos)
+  val outQ = Module(new Queue(chiselTypeOf(compressedReg),entries = 4))
+  val lastCompressedAcc = Wire(chiselTypeOf(compressedAccReg))
+  for (pos <- 0 until nmaxpcs) { lastCompressedAcc(pos) := 0.S }
+
+  when(reducedStageReg) {
+    if(debugprint) { printf("%d stage: reduced: %d %d\n", clk, rowidDelayed, (nrows - 1).U)  }
+
+    when(rowidDelayed === (nrows - 1).U) {
+      if(debugprint) { printf("Compressed data accumulated\n")  }
+      for (pos <- 0 until nmaxpcs) {
+        lastCompressedAcc(pos) := (compressedAccReg(pos) + partialcompressed(pos))
+        compressedAccReg(pos) := 0.S
+      }
+      compressedReg := lastCompressedAcc.asTypeOf(UInt((nmaxpcs*redbw).W))
+
+      enqOutQReg := true.B
+    }.otherwise {
+      for (pos <- 0 until nmaxpcs) {
+        compressedAccReg(pos) := compressedAccReg(pos) + partialcompressed(pos)
       }
     }
   }
-  io.out := compressedReg
+
+  outQ.io.enq.bits := compressedReg
+  outQ.io.enq.valid := false.B
+  when(enqOutQReg) {
+
+    when(outQ.io.enq.ready) {
+      if(debugprint) {
+        printf("%d enqOutQ: data=%x\n", clk, compressedReg)
+      }
+      outQ.io.enq.bits := compressedReg
+      outQ.io.enq.valid := true.B
+      enqOutQReg := false.B
+    }
+  }
+
+  io.out <> outQ.io.deq
 }
 
 object PCACompBlock extends App {
-  GenVerilog(new PCACompBlock)
+  GenVerilog(new PCACompBlock(PCAConfigPresets.large))
 }

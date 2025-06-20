@@ -64,23 +64,35 @@ class PCACompBlockSpec extends AnyFlatSpec {
   }
 
   "Block test with the small config" should "pass" in {
-    val cfg = PCAConfigPresets.default
+    val cfg = PCAConfigPresets.large
     val blockid = 0
 
-    simulate(new PCACompBlock(cfg, debugprint = true)) { dut =>
-      val pcadata = new PCATestData(cfg)
-      val indata = Array.fill(pcadata.blockwidth)(1.toLong)
-      pcadata.printInfo()
-      updateIEM(dut, pcadata, blockid, cfg)
+    simulate(new PCACompBlock(cfg, debugprint = false)) { dut =>
+      val td = new PCATestData(cfg)
+      val indata = Array.fill(td.blockwidth)(1.toLong)
+      td.printInfo()
+      // td.dumpMat()
+      updateIEM(dut, td, blockid, cfg)
 
       dut.io.indatavalid.poke(true)
       for(rowid <- 0 until cfg.h) {
         dut.io.rowid.poke(rowid)
-        dut.io.indata.poke(pcadata.convArray2BigInt(indata, cfg.pxbw))
+        dut.io.indata.poke(td.convArray2BigInt(indata, cfg.pxbw))
         dut.clock.step()
       }
-      dut.io.indatavalid.poke(true)
-      dut.clock.step(5) // the number of pipeline
+      dut.io.rowid.poke(0) // new frame
+      dut.io.indatavalid.poke(false)
+      //dut.clock.step(3)
+
+      dut.io.out.ready.poke(true)
+      while(!dut.io.out.valid.peek().litToBoolean) {
+        dut.clock.step()
+      }
+      val res = dut.io.out.bits.peek().litValue
+      val resarray = td.convBigInt2Array(res,
+        dut.redbw, cfg.m)
+      // println(s"$res")
+      println(resarray.mkString(" "))
     }
   }
 
