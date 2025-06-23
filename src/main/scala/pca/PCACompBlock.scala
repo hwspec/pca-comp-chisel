@@ -191,5 +191,17 @@ class PCACompBlock(cfg: PCAConfig = PCAConfigPresets.default,
 }
 
 object PCACompBlock extends App {
+  GenVerilog(new PCACompBlock())
+}
+
+object PCACompBlockSmall extends App {
+  GenVerilog(new PCACompBlock(PCAConfigPresets.small))
+}
+
+object PCACompBlockMedium extends App {
   GenVerilog(new PCACompBlock(PCAConfigPresets.medium))
+}
+
+object PCACompBlockLarge extends App {
+  GenVerilog(new PCACompBlock(PCAConfigPresets.large))
 }
