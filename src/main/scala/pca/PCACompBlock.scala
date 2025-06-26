@@ -25,7 +25,11 @@ class PCACompBlock(cfg: PCAConfig = PCAConfigPresets.default,
   val databw = iembw
   val busbw = width * databw
 
-  override def desiredName = s"${this.getClass.getSimpleName}__w${width}_pxbw${pxbw}_iembw${iembw}_npcs${nmaxpcs}"
+  val cfgstr = s"nrows${nrows}_ncols${ncols}_nblocks${cfg.nblocks}_w${width}_pxbw${pxbw}_iembw${iembw}_npcs${nmaxpcs}"
+
+  override def desiredName = s"${this.getClass.getSimpleName}_" + cfgstr
+
+  println(s"Design: " + cfgstr + s" SRAM: depth${nrows}_width${busbw}")
 
   val io = IO(new Bundle {
     // input : no stall condition for now
