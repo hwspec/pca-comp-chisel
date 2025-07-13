@@ -60,16 +60,16 @@ class PCACompBlock(cfg: PCAConfig = PCAConfigPresets.default,
   io.out.bits := 0.U
   io.out.valid := false.B
 
-  val mems = Seq.fill(nmaxpcs)(SyncReadMem(nrows, UInt(busbw.W)))
+//  val mems = Seq.fill(nmaxpcs)(SyncReadMem(nrows, UInt(busbw.W)))
 
-//  val mems = Seq.tabulate(nmaxpcs) { id =>
-//    Module(new SRAM1RW(nrows, busbw, useSyncReadMem)) }
-//  for(i <- 0 until nmaxpcs) {
-//    mems(i).io.en := true.B
-//    mems(i).io.we := true.B
-//    mems(i).io.addr := 0.U
-//    mems(i).io.wdata := 0.U
-//  } // enable for now
+  val mems = Seq.tabulate(nmaxpcs) { id =>
+    Module(new SRAM1RW(nrows, busbw, id, useSyncReadMem)) }
+  for(i <- 0 until nmaxpcs) {
+    mems(i).io.en := true.B
+    mems(i).io.we := false.B
+    mems(i).io.addr := 0.U
+    mems(i).io.wdata := 0.U
+  } // enable for now
 
   val memaddr  = Wire(UInt(log2Ceil(nrows).W))
   val memrdata = Wire(Vec(nmaxpcs, UInt(busbw.W)))
@@ -80,9 +80,9 @@ class PCACompBlock(cfg: PCAConfig = PCAConfigPresets.default,
 
   memaddr := io.rowid
   for(i <- 0 until nmaxpcs) {
-    memrdata(i) := mems(i).read(memaddr, true.B)  // SyncReadMem
-//    mems(i).io.addr := memaddr
-//    memrdata(i) := mems(i).io.rdata // assume synchronous behavior
+  //  memrdata(i) := mems(i).read(memaddr, true.B)  // SyncReadMem
+    mems(i).io.addr := memaddr
+    memrdata(i) := mems(i).io.rdata // assume synchronous behavior
 
     //    when(io.verifyIEM) {
 //      if (debugprint) {
@@ -96,10 +96,10 @@ class PCACompBlock(cfg: PCAConfig = PCAConfigPresets.default,
   when(io.updateIEM) {
     for(i <- 0 until nmaxpcs) {
       when(io.iempos === i.U) {
-        mems(i).write(io.rowid, io.iemdata ) // SyncReadMem
-//        mems(i).io.we := true.B
-//        mems(i).io.addr := io.rowid
-//        mems(i).io.wdata := io.iemdata
+//        mems(i).write(io.rowid, io.iemdata ) // SyncReadMem
+        mems(i).io.we := true.B
+        mems(i).io.addr := io.rowid
+        mems(i).io.wdata := io.iemdata
 
 //        if(debugprint) printf("update: iempos=%d rowpos=%d data=%d\n",
 //          i.U, io.rowpos, io.iemdata)

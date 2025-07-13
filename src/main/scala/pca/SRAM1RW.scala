@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import common.GenVerilog
 
-class SRAM1RW(depth: Int, width: Int, useSyncReadMem: Boolean = true) extends Module {
+class SRAM1RW(depth: Int, width: Int, id : Int, useSyncReadMem: Boolean = true) extends Module {
   val io = IO(new Bundle {
     val en     = Input(Bool())                     // enable read/write
     val we     = Input(Bool())                     // write enable
@@ -33,7 +33,7 @@ class SRAM1RW(depth: Int, width: Int, useSyncReadMem: Boolean = true) extends Mo
       // printf("SRAM: read addr=%d data=%d\n", io.addr, rdata)
     }
   } else {
-    val sram = Module(new BlackBoxSRAM1RW(depth, width))  // replace with SRAM module
+    val sram = Module(new BlackBoxSRAM1RW(depth, width, id))  // replace with SRAM module
     sram.io.clk   := clock
     sram.io.en    := io.en
     sram.io.we    := io.we
@@ -43,7 +43,7 @@ class SRAM1RW(depth: Int, width: Int, useSyncReadMem: Boolean = true) extends Mo
   }
 }
 
-class BlackBoxSRAM1RW(depth: Int, width: Int) extends
+class BlackBoxSRAM1RW(depth: Int, width: Int, id: Int) extends
   BlackBox(Map("DEPTH" -> depth, "WIDTH" -> width)) with HasBlackBoxInline {
   val io = IO(new Bundle {
     val clk    = Input(Clock())
@@ -80,6 +80,6 @@ class BlackBoxSRAM1RW(depth: Int, width: Int) extends
 
 
 object SRAM1RW extends App {
-  GenVerilog(new SRAM1RW(256, 128, true))
-  GenVerilog(new SRAM1RW(256, 128, false))
+  GenVerilog(new SRAM1RW(256, 128, id = 0, true))
+  GenVerilog(new SRAM1RW(256, 128, id = 0, false))
 }

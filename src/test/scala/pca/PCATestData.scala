@@ -32,8 +32,10 @@ class PCATestData(val cfg: PCAConfig = PCAConfigPresets.default) {
   // mat is a transposed invenc matrix
   val mat: Array[Array[Long]] = Array.fill(cfg.m, n) {
     val tmp = 1 << (cfg.encbw-1)
-    rnd.between(-tmp, tmp)
-    // rnd.between(0, tmp)
+    if(cfg.nonegative)
+      rnd.between(0, tmp) // Chisel's printf cannot print negative values correctly
+    else
+      rnd.between(-tmp, tmp)
   }
 
   val ref: Array[Long] = Array.fill(cfg.m)(0.toLong)
