@@ -6,6 +6,7 @@ ThisBuild / organization     := "com.github.kazutomo"
 ThisBuild / logLevel := Level.Warn
 
 val chiselVersion = "6.7.0"
+//val chiselVersion = "7.6.0"
 
 lazy val root = (project in file("."))
   .settings(
