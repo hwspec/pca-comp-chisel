@@ -3,10 +3,12 @@ package pca
 import chisel3.BuildInfo
 import org.scalatest.flatspec.AnyFlatSpec
 import chisel3.simulator.EphemeralSimulator._
-//import chisel3.simulator.scalatest.ChiselSim  // for 7.0 or later
-import scala.collection.mutable.ArrayBuffer
+import chisel3.simulator.scalatest.ChiselSim
 
-class PCACompBlockSpec extends AnyFlatSpec {
+import scala.collection.mutable.ArrayBuffer  // for 7.0 or later
+//import scala.collection.mutable.ArrayBuffer
+
+class PCACompBlockSpec extends AnyFlatSpec with ChiselSim {
   behavior of "PCACompBlock"
 
   "Check chisel version" should "pass" in {
@@ -77,7 +79,7 @@ class PCACompBlockSpec extends AnyFlatSpec {
     var ret : Array[Long] = Array.fill(cfg.m)(0)
 
     simulate(new PCACompBlock(cfg, debugprint = false)) { dut =>
-      resetPCACompBlock(dut)
+      //resetPCACompBlock(dut)
       // val indata = Array.fill(td.blockwidth)(1.toLong)
       td.printInfo()
       // td.dumpMat()
