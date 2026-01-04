@@ -2,7 +2,7 @@ package pca
 
 import chisel3.BuildInfo
 import org.scalatest.flatspec.AnyFlatSpec
-import chisel3.simulator.EphemeralSimulator._
+//import chisel3.simulator.EphemeralSimulator._
 import chisel3.simulator.scalatest.ChiselSim
 
 import scala.collection.mutable.ArrayBuffer  // for 7.0 or later

@@ -44,8 +44,13 @@ class SRAM1RW(depth: Int, width: Int, id : Int, useSyncReadMem: Boolean = true) 
 }
 
 class BlackBoxSRAM1RW(depth: Int, width: Int, id: Int) extends
-  BlackBox(Map("DEPTH" -> depth, "WIDTH" -> width)) with HasBlackBoxInline {
-  val io = IO(new Bundle {
+  //BlackBox(Map("DEPTH" -> depth, "WIDTH" -> width)) with HasBlackBoxInline {
+  ExtModule(Map("DEPTH" -> depth, "WIDTH" -> width)) {
+
+  override def desiredName: String = s"SRAM1RW_${depth}x${width}"
+
+  //val io = IO(new Bundle {
+  val io = FlatIO(new Bundle {
     val clk    = Input(Clock())
     val en     = Input(Bool())
     val we     = Input(Bool())

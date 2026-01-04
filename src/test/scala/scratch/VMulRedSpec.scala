@@ -1,12 +1,12 @@
 package scratch
 
-import chisel3.simulator.EphemeralSimulator._
-//import chisel3.simulator.scalatest.ChiselSim
+//import chisel3.simulator.EphemeralSimulator._
+import chisel3.simulator.scalatest.ChiselSim
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Random
 
-class CompareRedSpec extends AnyFlatSpec  {
+class CompareRedSpec extends AnyFlatSpec with ChiselSim {
   behavior of "CompareRed"
 
   val n = 4
@@ -32,7 +32,7 @@ class CompareRedSpec extends AnyFlatSpec  {
 }
 
 
-class VMulRedSpec extends AnyFlatSpec {
+class VMulRedSpec extends AnyFlatSpec with ChiselSim {
   behavior of "VMulRed"
 
   val npx = 128*8
