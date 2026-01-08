@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2025, UChicago Argonne, LLC.
+# Main author: Kazutomo Yoshii <kazutomo@anl.gov>. See LICENSE in project root.
+
 import numpy as np
 import math as m
 from scipy import linalg as la
