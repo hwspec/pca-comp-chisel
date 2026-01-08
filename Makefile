@@ -1,3 +1,7 @@
+
+gen:
+	@sbt 'runMain pca.PCACompBlockLarge'
+
 test:
 	@sbt test
 
